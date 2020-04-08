@@ -6,6 +6,7 @@ const cors = require('cors');
 const superagent = require('superagent');
 const pg = require('pg');
 const PORT = process.env.PORT || 4000;
+const key = process.env.GEOCODE_API_KEY;
 const app = express();
 app.use(cors());
 
@@ -28,21 +29,25 @@ app.use(errorHandler);
 
 function selectLocation (request,response){
   const city = request.query.city;
-  let sqlCheck = `SELECT * FROM locations WHERE search_query = '${city}';`;
+  let sqlCheck = `SELECT * FROM location WHERE search_query = '${city}';`;
   client.query(sqlCheck)
     .then(result => {
       if(result.rows.length > 0){
+        console.log('hell');
+        
         response.status(200).json(result.rows[0]);
         // console.log(result.rows.length);
       } else {
+        console.log('nope');
+        
         findLocation(city)
           .then(locationData => {
-            let insertCity = locationData.search_query;
+            let myCity = locationData.search_query;
             let format =  locationData.formatted_query;
             let lat = locationData.latitude;
             let lon = locationData.longitude;
-            let safeValues = [insertCity,format,lat,lon];
-            let SQL = 'INSERT INTO locations (search_query,formatted_query,latitude,longitude) VALUES ($1,$2,$3,$4);';
+            let safeValues = [myCity,format,lat,lon];
+            let SQL = 'INSERT INTO location (search_query,formatted_query,latitude,longitude) VALUES ($1,$2,$3,$4);';
             return client.query(SQL,safeValues)
               .then(result2 => {
                 response.status(200).json(result2.rows[0]);
@@ -55,7 +60,6 @@ function selectLocation (request,response){
 
 // Route Handlers
 function findLocation(city){
-  let key = process.env.GEOCODE_API_KEY;
   const url = `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${city}&format=json`;
   return superagent.get(url)
     .then(geoData => {
